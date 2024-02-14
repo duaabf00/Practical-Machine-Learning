@@ -1,0 +1,86 @@
+---
+title: "Reprot"
+author: "DuaaFahs"
+date: "2024-02-14"
+output: html_document
+---
+
+## Introduction  
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it.  
+
+In this project, we will use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants to predict the manner in which they did the exercise.  
+
+## Data Preprocessing  
+# Load necessary libraries
+```{r}
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(RColorBrewer)
+library(rattle)
+library(randomForest)
+library(repmis)
+library(corrplot)
+library(gbm)
+```
+### Reading the Data
+```{r}
+# Read the data
+training <- read.csv("pml-training.csv", na.strings = c("NA", ""))
+testing <- read.csv("pml-testing.csv", na.strings = c("NA", ""))
+```
+### Data Preprocessing
+```{r}
+# Clean the data
+training <- training[, colSums(is.na(training)) == 0]
+testing <- testing[, colSums(is.na(testing)) == 0]
+trainData <- training[, -c(1:7)]
+testData <- testing[, -c(1:7)]
+```
+### Split the data
+```{r}
+set.seed(7826) 
+inTrain <- createDataPartition(trainData$classe, p = 0.7, list = FALSE)
+train <- trainData[inTrain, ]
+valid <- trainData[-inTrain, ]
+```
+
+### Prediction Algorithms
+```{r}
+# Create the classification tree model
+control <- caret::trainControl(method = "cv", number = 5)
+fit_rpart <- caret::train(classe ~ ., data = train, method = "rpart", trControl = control)
+print(fit_rpart, digits = 4)
+
+# Predict outcomes using the validation set
+predict_rpart <- predict(fit_rpart, valid)
+
+# Ensure predict_rpart has the same factor levels as valid$classe
+predict_rpart <- factor(predict_rpart, levels = levels(valid$classe))
+
+# Show prediction result
+conf_rpart <- caret::confusionMatrix(valid$classe, predict_rpart)
+print(conf_rpart)
+```
+### Random forests
+```{r}
+# Create the random forest model
+fit_rf <- caret::train(classe ~ ., data = train, method = "rf", trControl = control)
+print(fit_rf, digits = 4)
+
+# Predict outcomes using the validation set
+predict_rf <- predict(fit_rf, valid)
+
+# Show prediction result
+conf_rf <- caret::confusionMatrix(valid$classe, predict_rf)
+print(conf_rf)
+
+# Calculate accuracy
+accuracy_rf <- conf_rf$overall[1]
+print(accuracy_rf)
+```
+
+### Apply the random forest model to the test data set
+```{r}
+predict(fit_rf, testData)
+```
